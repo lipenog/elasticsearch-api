@@ -87,7 +87,7 @@ public class EsClient {
                     .map(s -> {
                         String removeQuotes = s.replaceAll("\"", "");
                         Query matchPhraseQuery = MatchPhraseQuery.of(
-                                q -> q.field("content").query(removeQuotes)
+                                q -> q.field("content").query(removeQuotes).queryName(removeQuotes)
                         )._toQuery();
                         return matchPhraseQuery;
                     })
@@ -101,7 +101,7 @@ public class EsClient {
                     .stream()
                     .map(s -> {
                         Query matchQuery = MatchQuery.of(
-                                q -> q.field("content").query(s)
+                                q -> q.field("content").query(s).queryName(s)
                         )._toQuery();
                         return matchQuery;
                     }).collect(Collectors.toList());
@@ -117,8 +117,17 @@ public class EsClient {
         int firstElement = (page-1)*PAGE_SIZE;
 
         try{
-            response = elasticsearchClient.search(s -> s.index("wikipedia").from(firstElement).size(PAGE_SIZE).query(boolQuery), ObjectNode.class);
-            System.out.println(response.hits().total());
+            response = elasticsearchClient.search(s -> s.index("wikipedia")
+                    .from(firstElement)
+                    .size(PAGE_SIZE)
+                    .query(boolQuery)
+                    .highlight(
+                            h -> h.preTags("<i>")
+                                    .postTags("</i>")
+                                    .fields("content", f -> f.highlightQuery(boolQuery)))
+                    , ObjectNode.class);
+
+            response.hits().hits().stream().forEach(h -> System.out.println(h.highlight()));
         }catch (Exception e){
             throw new RuntimeException(e);
         }

@@ -28,9 +28,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Result'
+                $ref: '#/components/schemas/Result'
         500:
           description: Unexpected error
           content:
@@ -42,12 +40,21 @@ components:
     Result:
       type: object
       properties:
-        title:
-          type: string
-        url:
-          type: string
-        abs:
-          type: string
+        time:
+          type: integer
+        hits:
+          type: integer
+        Results:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              url:
+                type: string
+              abs:
+                type: string
     Error:
       type: object
       required:

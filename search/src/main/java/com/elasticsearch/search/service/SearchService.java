@@ -2,6 +2,7 @@ package com.elasticsearch.search.service;
 
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
+import com.elasticsearch.search.api.model.ResultResults;
 import com.elasticsearch.search.domain.EsClient;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.stereotype.Service;
@@ -21,10 +22,10 @@ public class SearchService {
         this.esClient = esClient;
     }
 
-    public List<Result> submitQuery(String query, Integer page){
+    public Result submitQuery(String query, Integer page){
 
         if(isNull(query) || query.isBlank()){
-            return new ArrayList<Result>();
+            return new Result();
         }
 
         if(isNull(page) || page <= 0){
@@ -33,16 +34,19 @@ public class SearchService {
 
         SearchResponse searchResponse = esClient.search(query, page);
         List<Hit<ObjectNode>> hits = searchResponse.hits().hits();
-        var resultList = hits
+        Result result = new Result();
+        result.setHits(Integer.valueOf((int) searchResponse.hits().total().value()));
+        result.setTime((int) searchResponse.took());
+        result.setResults(hits
                 .stream()
                 .map(
-                        h -> new Result()
+                        h -> new ResultResults()
                                 .abs(treatContent(h.source().get("content").asText()))
                                 .title(h.source().get("title").asText())
                                 .url(h.source().get("url").asText())
-                        ).collect(Collectors.toList());
+                ).collect(Collectors.toList()));
 
-        return resultList;
+        return result;
     }
 
     private String treatContent(String content){
