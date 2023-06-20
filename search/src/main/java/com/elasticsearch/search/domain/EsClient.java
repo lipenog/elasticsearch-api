@@ -77,11 +77,40 @@ public class EsClient {
 
     public SearchResponse search(String query, Integer page){
 
+        Query boolQuery = generateBoolQuery(query);
+
+        Map<String, HighlightField> map = new HashMap<>();
+        map.put("content", HighlightField.of(hf -> hf.numberOfFragments(1).fragmentSize(300)));
+        Highlight highlight = Highlight.of(
+                h -> h.type(HighlighterType.Unified)
+                        .fields(map)
+        );
+
+
+        SearchResponse<ObjectNode> response;
+
+        int firstElement = (page-1)*PAGE_SIZE;
+
+        try{
+            response = elasticsearchClient.search(s -> s.index("wikipedia")
+                    .from(firstElement)
+                    .size(PAGE_SIZE)
+                    .query(boolQuery)
+                    .highlight(highlight), ObjectNode.class);
+
+            response.hits().hits().stream().forEach(h -> System.out.println(h.matchedQueries()));
+        }catch (Exception e){
+            throw new RuntimeException(e);
+        }
+
+        return response;
+    }
+
+    private static Query generateBoolQuery(String query) {
         List<Query> mustQueries;
         List<Query> shouldQueries;
 
         Map<Boolean, List<String>> mapQueries = mapQueries(query);
-        System.out.println(mapQueries);
 
         if(isNull(mapQueries.get(true))){
             mustQueries = new ArrayList<>();
@@ -114,32 +143,7 @@ public class EsClient {
         Query boolQuery = BoolQuery.of(
                 q -> q.must(mustQueries).should(shouldQueries)
         )._toQuery();
-
-        Map<String, HighlightField> map = new HashMap<>();
-        map.put("content", HighlightField.of(hf -> hf.numberOfFragments(1).fragmentSize(300)));
-        Highlight highlight = Highlight.of(
-                h -> h.type(HighlighterType.Unified)
-                        .fields(map)
-        );
-
-
-        SearchResponse<ObjectNode> response;
-
-        int firstElement = (page-1)*PAGE_SIZE;
-
-        try{
-            response = elasticsearchClient.search(s -> s.index("wikipedia")
-                    .from(firstElement)
-                    .size(PAGE_SIZE)
-                    .query(boolQuery)
-                    .highlight(highlight), ObjectNode.class);
-
-            //response.hits().hits().stream().forEach(h -> System.out.println(h.highlight()));
-        }catch (Exception e){
-            throw new RuntimeException(e);
-        }
-
-        return response;
+        return boolQuery;
     }
 
 
