@@ -12,6 +12,7 @@ import co.elastic.clients.elasticsearch.core.search.HighlighterType;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import com.elasticsearch.search.bean.StopWordsSingleton;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import nl.altindag.ssl.SSLFactory;
 import org.apache.http.HttpHost;
@@ -39,6 +40,7 @@ import static java.util.Objects.isNull;
 public class EsClient {
     private String username;
     private String password;
+    private static StopWordsSingleton stopWordsSingleton;
     private ElasticsearchClient elasticsearchClient;
     private static final Integer PAGE_SIZE = 10;
     public EsClient(@Value("${elasticsearch.connection.username}") String username,
@@ -46,6 +48,7 @@ public class EsClient {
 
         this.username = username;
         this.password = password;
+        this.stopWordsSingleton = StopWordsSingleton.getInstance();
         createConnection();
     }
 
@@ -76,6 +79,7 @@ public class EsClient {
     }
 
     public SearchResponse search(String query, Integer page){
+
 
         Query boolQuery = generateBoolQuery(query);
 
@@ -154,6 +158,7 @@ public class EsClient {
 
         List<String> list = splitWordsInQuotes
                 .splitAsStream(query)
+                .filter(s -> !stopWordsSingleton.getStopWords().contains(s))
                 .collect(Collectors.toList());
 
         Pattern matchWordsInQuotes = Pattern.compile("(\".*\")");

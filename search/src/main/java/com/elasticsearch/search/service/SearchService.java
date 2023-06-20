@@ -3,6 +3,7 @@ package com.elasticsearch.search.service;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.elasticsearch.search.api.model.ResultResults;
+import com.elasticsearch.search.bean.StopWordsSingleton;
 import com.elasticsearch.search.domain.EsClient;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class SearchService {
         if(isNull(page) || page <= 0){
             page = 1;
         }
+
 
         SearchResponse searchResponse = esClient.search(query, page);
         List<Hit<ObjectNode>> hits = searchResponse.hits().hits();
