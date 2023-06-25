@@ -40,7 +40,6 @@ import static java.util.Objects.isNull;
 public class EsClient {
     private String username;
     private String password;
-    private static StopWordsSingleton stopWordsSingleton;
     private ElasticsearchClient elasticsearchClient;
     private static final Integer PAGE_SIZE = 10;
     public EsClient(@Value("${elasticsearch.connection.username}") String username,
@@ -48,7 +47,6 @@ public class EsClient {
 
         this.username = username;
         this.password = password;
-        this.stopWordsSingleton = StopWordsSingleton.getInstance();
         createConnection();
     }
 
@@ -78,8 +76,7 @@ public class EsClient {
         elasticsearchClient = new ElasticsearchClient(elasticsearchTransport);
     }
 
-    public SearchResponse search(String query, Integer page){
-
+    public SearchResponse search(Map<String, List<String>> query, Integer page){
 
         Query boolQuery = generateBoolQuery(query);
 
@@ -110,32 +107,26 @@ public class EsClient {
         return response;
     }
 
-    private static Query generateBoolQuery(String query) {
+    private static Query generateBoolQuery(Map<String, List<String>> query) {
         List<Query> mustQueries;
         List<Query> shouldQueries;
 
-        Map<Boolean, List<String>> mapQueries = mapQueries(query);
-
-        if(isNull(mapQueries.get(true))){
+        if(isNull(query.get("phrase"))){
             mustQueries = new ArrayList<>();
         } else {
-            mustQueries = mapQueries.get(true)
-                    .stream()
+            mustQueries = query.get("phrase").stream()
                     .map(s -> {
-                        String removeQuotes = s.replaceAll("\"", "");
                         Query matchPhraseQuery = MatchPhraseQuery.of(
-                                q -> q.field("content").query(removeQuotes).queryName(removeQuotes)
+                                q -> q.field("content").query(s).queryName(s)
                         )._toQuery();
                         return matchPhraseQuery;
-                    })
-                    .collect(Collectors.toList());
+                    }).collect(Collectors.toList());
         }
 
-        if(isNull(mapQueries.get(false))){
+        if(isNull(query.get("words"))){
             shouldQueries = new ArrayList<>();
         } else {
-            shouldQueries = mapQueries.get(false)
-                    .stream()
+            shouldQueries = query.get("words").stream()
                     .map(s -> {
                         Query matchQuery = MatchQuery.of(
                                 q -> q.field("content").query(s).queryName(s)
@@ -150,27 +141,4 @@ public class EsClient {
         return boolQuery;
     }
 
-
-    private static Map<Boolean, List<String>> mapQueries(String query){
-        // split the query by white spaces outside the quotes
-        // for example word "word and word" word = word/word and word/word
-        Pattern splitWordsInQuotes = Pattern.compile(" +(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-
-        List<String> list = splitWordsInQuotes
-                .splitAsStream(query)
-                .filter(s -> !stopWordsSingleton.getStopWords().contains(s))
-                .collect(Collectors.toList());
-
-        Pattern matchWordsInQuotes = Pattern.compile("(\".*\")");
-
-        // maps all the words in the query, grouping then in not in quotes and in quotes
-        Map<Boolean, List<String>> mapQueries = list.stream()
-                .collect(Collectors.groupingBy(s -> {
-                    Matcher m = matchWordsInQuotes.matcher(s);
-                    boolean isInQuotes = m.matches();
-                    return isInQuotes;
-                }));
-
-        return mapQueries;
-    }
 }
