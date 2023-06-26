@@ -111,10 +111,10 @@ public class EsClient {
         List<Query> mustQueries;
         List<Query> shouldQueries;
 
-        if(isNull(query.get("phrase"))){
+        if(isNull(query.get("phrases"))){
             mustQueries = new ArrayList<>();
         } else {
-            mustQueries = query.get("phrase").stream()
+            mustQueries = query.get("phrases").stream()
                     .map(s -> {
                         Query matchPhraseQuery = MatchPhraseQuery.of(
                                 q -> q.field("content").query(s).queryName(s)

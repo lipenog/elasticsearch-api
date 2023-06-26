@@ -82,20 +82,29 @@ public class SearchService {
         String tmpQuery = m.replaceAll(" ");
 
         // TO DO treat other types of separation like (tab - ' ...)
-        tmpQuery = tmpQuery.replaceAll("\\u0020+", "/");
+        tmpQuery = tmpQuery
+                .replaceAll("\\Q-\\E", " ")
+                .replaceAll("\\Q\'\\Es", "/")
+                .replaceAll("\n", "/")
+                .replaceAll("\\u0020+", "/");
+        System.out.println(tmpQuery);
 
         Pattern matchSpaces = Pattern.compile("/");
 
         // list all the other words except stop words
         List<String> words = matchSpaces.splitAsStream(tmpQuery)
+                .filter(s -> !s.isEmpty())
                 .filter(s -> !stopWordsSingleton.getStopWords().contains(s))
                 .collect(Collectors.toList());
 
         // if the query contains only stop words
         if(words.isEmpty()){
             words = matchSpaces.splitAsStream(tmpQuery)
+                    .filter(s -> !s.isEmpty())
                     .collect(Collectors.toList());
         }
+
+        System.out.println(words);
 
         Map<String, List<String>> result = new HashMap<>();
 
