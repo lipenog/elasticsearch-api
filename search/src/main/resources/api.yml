@@ -55,6 +55,10 @@ components:
                 type: string
               abs:
                 type: string
+              search-terms:
+                type: array
+                items:
+                  type: string
     Error:
       type: object
       required:

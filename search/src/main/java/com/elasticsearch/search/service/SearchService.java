@@ -57,6 +57,7 @@ public class SearchService {
                                 .abs(treatContent(h.highlight().get("content").get(0)))
                                 .title(h.source().get("title").asText())
                                 .url(h.source().get("url").asText())
+                                .searchTerms(h.matchedQueries())
                 ).collect(Collectors.toList()));
         return result;
     }
@@ -84,12 +85,10 @@ public class SearchService {
         // TO DO treat other types of separation like (tab - ' ...)
         tmpQuery = tmpQuery
                 .replaceAll("\\Q-\\E", " ")
-                .replaceAll("\\Q\'\\Es", "/")
-                .replaceAll("\n", "/")
-                .replaceAll("\\u0020+", "/");
-        System.out.println(tmpQuery);
+                .replaceAll("\\Q\'\\Es", " ")
+                .replaceAll("\\s+", " ");
 
-        Pattern matchSpaces = Pattern.compile("/");
+        Pattern matchSpaces = Pattern.compile(" ");
 
         // list all the other words except stop words
         List<String> words = matchSpaces.splitAsStream(tmpQuery)
@@ -104,7 +103,6 @@ public class SearchService {
                     .collect(Collectors.toList());
         }
 
-        System.out.println(words);
 
         Map<String, List<String>> result = new HashMap<>();
 

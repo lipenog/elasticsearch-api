@@ -26,8 +26,8 @@ public final class StopWordsSingleton {
     }
 
     // ref = https://www.ranks.nl/stopwords Google history
-    public void populateStopWords(){
-        String[] words = { "I", "a", "about", "an", "are", "as", "at", "be", "by", "com", "for", "from", "how", "in", "is", "it", "of", "on", "or", "that", "the", "this", "to", "was", "what", "when", "where", "who", "will", "with", "the", "www" };
+    private void populateStopWords(){
+        String[] words = { "I", "a", "about", "an", "are", "as", "at", "be", "by", "com", "for", "from", "how", "in", "is", "it", "of", "on", "or", "and", "that", "the", "this", "to", "was", "what", "when", "where", "who", "will", "with", "the", "www" };
 
         this.stopWords = Arrays.stream(words).toList();
     }
