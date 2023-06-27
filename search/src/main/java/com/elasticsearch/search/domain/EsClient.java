@@ -95,8 +95,6 @@ public class EsClient {
                     .size(PAGE_SIZE)
                     .query(boolQuery)
                     .highlight(highlight), ObjectNode.class);
-
-            response.hits().hits().stream().forEach(h -> System.out.println(h.matchedQueries()));
         }catch (Exception e){
             throw new RuntimeException(e);
         }

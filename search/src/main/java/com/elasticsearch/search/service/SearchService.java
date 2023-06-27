@@ -40,12 +40,7 @@ public class SearchService {
 
         Map<String, List<String>> treatedQuery = treatQuery(query);
         SearchResponse searchResponse = esClient.search(treatedQuery, page);
-        Result result = getResult(searchResponse);
 
-        return result;
-    }
-
-    private Result getResult(SearchResponse searchResponse) {
         List<Hit<ObjectNode>> hits = searchResponse.hits().hits();
         Result result = new Result();
         result.setHits(Integer.valueOf((int) searchResponse.hits().total().value()));
@@ -54,15 +49,21 @@ public class SearchService {
                 .stream()
                 .map(
                         h -> {
-                            new ResultResults()
+                            List<String> words = treatedQuery.get("words");
+                            List<String> notFound = words.stream().limit(5).filter(s -> !h.matchedQueries().contains(s)).collect(Collectors.toList());
+
+                            return new ResultResults()
                                     .abs(treatContent(h.highlight().get("content").get(0)))
                                     .title(h.source().get("title").asText())
                                     .url(h.source().get("url").asText())
-                                    .searchTerms(h.matchedQueries());
+                                    .searchTerms(h.matchedQueries())
+                                    .notFound(notFound);
                         }
                 ).collect(Collectors.toList()));
+
         return result;
     }
+
 
     private String treatContent(String content){
         content = content.replaceAll("</?(som|math)\\d*>", " ");
@@ -79,11 +80,11 @@ public class SearchService {
         Matcher m = matchQuotes.matcher(query);
 
         // list every phrase in quotes
-        List<String> phrases = m.results()
+        List<String> phrasesQuery = m.results()
                 .map(match -> match.group(1))
                 .collect(Collectors.toList());
 
-        result.put("phrases", phrases);
+        result.put("phrases", phrasesQuery);
 
         // remove the phrases in quotes
         String tmpQuery = m.replaceAll(" ");
@@ -96,33 +97,49 @@ public class SearchService {
 
         Pattern matchSpaces = Pattern.compile(" ");
 
-        // list all the other words except stop words
+        // list all the other words except stop words sorted
         List<String> words = matchSpaces.splitAsStream(tmpQuery)
-                .distinct()
                 .filter(s -> !s.isEmpty())
                 .filter(s -> !stopWordsSingleton.getStopWords().contains(s))
+                .distinct()
+                .sorted((s1, s2) -> {
+                    if(s1.length() > s2.length()){
+                        return -1;
+                    } else {
+                        return 1;
+                    }
+                })
                 .collect(Collectors.toList());
 
+        System.out.println(words);
         // if the query contains only stop words
         if(words.isEmpty()){
             words = matchSpaces.splitAsStream(tmpQuery)
                     .distinct()
                     .filter(s -> !s.isEmpty())
+                    .sorted((s1, s2) -> {
+                        if(s1.length() > s2.length()){
+                            return -1;
+                        } else {
+                            return 1;
+                        }
+                    })
                     .collect(Collectors.toList());
         }
 
-
-        if(words.stream().count() > 20){
-            String allWordsQuery = words.stream().reduce((s1, s2) -> s1 + " " + s2).get();
-            result.put("words", List.of(allWordsQuery));
-            System.out.println(allWordsQuery);
+        // the 5 largest words are considered the most important this way the client will send a bool query
+        // that contains 5 should (the largest one's) and a last should that contains the rest of the query
+        if(words.stream().count() <= 5){
+            result.put("words", words);
             return result;
         }
 
-        result.put("words", words);
+        List<String> wordsQuery = words.stream().limit(5).collect(Collectors.toList());
+        wordsQuery.add(words.stream().skip(5).reduce((s1, s2) -> s1 + " " + s2).get());
 
-        System.out.println(phrases);
-        System.out.println(words);
+        System.out.println(wordsQuery);
+
+        result.put("words", wordsQuery);
 
         return result;
     }
