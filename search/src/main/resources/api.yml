@@ -59,6 +59,10 @@ components:
                 type: array
                 items:
                   type: string
+              not-found:
+                type: array
+                items:
+                  type: string
     Error:
       type: object
       required:

@@ -53,11 +53,13 @@ public class SearchService {
         result.setResults(hits
                 .stream()
                 .map(
-                        h -> new ResultResults()
-                                .abs(treatContent(h.highlight().get("content").get(0)))
-                                .title(h.source().get("title").asText())
-                                .url(h.source().get("url").asText())
-                                .searchTerms(h.matchedQueries())
+                        h -> {
+                            new ResultResults()
+                                    .abs(treatContent(h.highlight().get("content").get(0)))
+                                    .title(h.source().get("title").asText())
+                                    .url(h.source().get("url").asText())
+                                    .searchTerms(h.matchedQueries());
+                        }
                 ).collect(Collectors.toList()));
         return result;
     }
@@ -71,6 +73,8 @@ public class SearchService {
     }
 
     private Map<String, List<String>> treatQuery(String query){
+        Map<String, List<String>> result = new HashMap<>();
+
         Pattern matchQuotes = Pattern.compile("\\Q\"\\E(.*?)\\Q\"\\E",  Pattern.DOTALL);
         Matcher m = matchQuotes.matcher(query);
 
@@ -78,6 +82,8 @@ public class SearchService {
         List<String> phrases = m.results()
                 .map(match -> match.group(1))
                 .collect(Collectors.toList());
+
+        result.put("phrases", phrases);
 
         // remove the phrases in quotes
         String tmpQuery = m.replaceAll(" ");
@@ -92,6 +98,7 @@ public class SearchService {
 
         // list all the other words except stop words
         List<String> words = matchSpaces.splitAsStream(tmpQuery)
+                .distinct()
                 .filter(s -> !s.isEmpty())
                 .filter(s -> !stopWordsSingleton.getStopWords().contains(s))
                 .collect(Collectors.toList());
@@ -99,15 +106,23 @@ public class SearchService {
         // if the query contains only stop words
         if(words.isEmpty()){
             words = matchSpaces.splitAsStream(tmpQuery)
+                    .distinct()
                     .filter(s -> !s.isEmpty())
                     .collect(Collectors.toList());
         }
 
 
-        Map<String, List<String>> result = new HashMap<>();
+        if(words.stream().count() > 20){
+            String allWordsQuery = words.stream().reduce((s1, s2) -> s1 + " " + s2).get();
+            result.put("words", List.of(allWordsQuery));
+            System.out.println(allWordsQuery);
+            return result;
+        }
 
-        result.put("phrases", phrases);
         result.put("words", words);
+
+        System.out.println(phrases);
+        System.out.println(words);
 
         return result;
     }
