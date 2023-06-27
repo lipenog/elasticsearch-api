@@ -89,15 +89,15 @@ public class SearchService {
         // remove the phrases in quotes
         String tmpQuery = m.replaceAll(" ");
 
-        // TO DO treat other types of separation like (tab - ' ...)
+
         tmpQuery = tmpQuery
                 .replaceAll("\\Q-\\E", " ")
-                .replaceAll("\\Q\'\\Es", " ")
+                .replaceAll("\\Q\'\\E", " ")
                 .replaceAll("\\s+", " ");
 
         Pattern matchSpaces = Pattern.compile(" ");
 
-        // list all the other words except stop words sorted
+        // list all the other words except stop words sorted by the largest to the shortest
         List<String> words = matchSpaces.splitAsStream(tmpQuery)
                 .filter(s -> !s.isEmpty())
                 .filter(s -> !stopWordsSingleton.getStopWords().contains(s))
