@@ -140,17 +140,11 @@ public class EsClient {
 
         Optional<String> result;
 
-        final String tmpQuery = query.replaceAll("\\Q-\\E", " ")
-                .replaceAll("\\Q\"\\E", " ")
-                .replaceAll("\\Q\'\\E", " ")
-                .replaceAll("\\Q,\\E", " ")
-                .replaceAll("\\Q.\\E", " ")
-                .replaceAll("\\s+", " ");
 
-        var suggester = Suggester.of(s -> s.suggesters("", su -> su.text(tmpQuery).term(t -> t.field("content.suggest").size(1))));
+        var suggester = Suggester.of(s -> s.suggesters("", su -> su.text(query).term(t -> t.field("content.suggest").size(1))));
         SearchResponse<ObjectNode> response;
         try{
-            response = elasticsearchClient.search(s -> s.index("teste")
+            response = elasticsearchClient.search(s -> s.index("wikipedia")
                     .suggest(suggester), ObjectNode.class);
 
             final int idx = 0;
@@ -170,20 +164,25 @@ public class EsClient {
             Pattern matchSpaces = Pattern.compile(" ");
             int i = 0;
             StringBuilder sb = new StringBuilder();
-            for(String s : matchSpaces.split(tmpQuery)){
+            for(String s : matchSpaces.split(query)){
+
                 if(!suggestions.get(i).isEmpty()){
-                    sb.append("<em>").append(suggestions.get(i)).append("</em>").append(" ");
+                    if(s.startsWith("\"")){
+                        sb.append("\"");
+                    }
+                    sb.append("<em>").append(suggestions.get(i)).append("</em>");
+                    if(s.endsWith("\"")){
+                        sb.append("\"");
+                    }
                 }else{
-                    sb.append(s).append(" ");
+                    sb.append(s);
                 }
+                sb.append(" ");
                 i++;
             }
-            query = sb.toString().trim();
-
+            return Optional.of(sb.toString().trim());
         }catch (Exception e){
             throw new RuntimeException(e);
         }
-
-        return Optional.of(query);
     }
 }

@@ -1,0 +1,72 @@
+PUT /wikipedia
+{
+  "settings": {
+    "number_of_shards": 4,
+    "number_of_replicas": 1,
+    "index.mapping.coerce": false,
+    "analysis": {
+      "analyzer": {
+        "analyzer_for_suggestions": {
+          "filter": [
+            "asciifolding",
+            "lowercase"
+          ],
+          "char_filter": [],
+          "type": "custom",
+          "tokenizer": "standard"
+        },
+        "analyzer_for_content": {
+          "filter": [
+            "asciifolding",
+            "lowercase",
+            "snowball"
+          ],
+          "char_filter": [],
+          "type": "custom",
+          "tokenizer": "standard"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "title": {
+        "type": "text",
+        "analyzer": "analyzer_for_content"
+      },
+      "url": {
+        "type": "keyword",
+        "doc_values": false,
+        "index": false
+      },
+      "content": {
+        "type": "text",
+        "fields": {
+          "suggest": {
+            "type": "text",
+            "analyzer": "analyzer_for_suggestions"
+          }
+        },
+        "analyzer": "analyzer_for_content"
+      },
+      "dt_creation": {
+        "type": "date"
+      },
+      "reading_time": {
+        "type": "integer"
+      }
+    }
+  }
+}
+
+POST _reindex?wait_for_completion=false
+{
+  "source": {
+    "index": "teste"
+  },
+  "dest": {
+    "index": "wikipedia"
+  }
+}
+

@@ -41,14 +41,14 @@ public class SearchService {
         }
 
         Map<String, List<String>> treatedQuery = treatQuery(query);
+        System.out.println(treatedQuery);
         SearchResponse searchResponse = esClient.search(treatedQuery, page);
 
         List<Hit<ObjectNode>> hits = searchResponse.hits().hits();
         Result result = new Result();
         result.setHits(Integer.valueOf((int) searchResponse.hits().total().value()));
         result.setTime((int) searchResponse.took());
-        suggestedQuery.ifPresent(s -> result.suggest(s));
-
+        result.suggest(suggestedQuery.get());
         result.setResults(hits
                 .stream()
                 .map(
@@ -68,7 +68,6 @@ public class SearchService {
         return result;
     }
 
-
     private String treatContent(String content){
         content = content.replaceAll("</?(som|math)\\d*>", " ");
         content = content.replaceAll("[^A-Za-z\\s</>]+", " ");
@@ -79,6 +78,9 @@ public class SearchService {
 
     private Map<String, List<String>> treatQuery(String query){
         Map<String, List<String>> result = new HashMap<>();
+
+        query = query.replaceAll("</*em>","");
+        System.out.println(query);
 
         Pattern matchQuotes = Pattern.compile("\\Q\"\\E(.*?)\\Q\"\\E",  Pattern.DOTALL);
         Matcher m = matchQuotes.matcher(query);
