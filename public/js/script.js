@@ -33,17 +33,14 @@ let inputValue = '';
 input.addEventListener("keydown", function (event) {
   if (event.key == 'Enter') {
     inputValue = event.target.value;
-    query();
-    consoleValue();
+    const query = `search?query=${inputValue}`;
+    urlQuery(query);
+    input.value = '';
   }
-})
+});
 
-function query() {
-  let query = `/search?query=${inputValue}`;
-  console.log(query);
+// Jogar query na url
+function urlQuery(url) {
+  // history.pushState(null, "", '');
+  history.pushState(null, "", url);
 }
-
-function consoleValue() {
-  console.log(inputValue);
-}
-
