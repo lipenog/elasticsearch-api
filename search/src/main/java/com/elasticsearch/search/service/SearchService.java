@@ -41,14 +41,13 @@ public class SearchService {
         }
 
         Map<String, List<String>> treatedQuery = treatQuery(query);
-        System.out.println(treatedQuery);
         SearchResponse searchResponse = esClient.search(treatedQuery, page);
 
         List<Hit<ObjectNode>> hits = searchResponse.hits().hits();
         Result result = new Result();
         result.setHits(Integer.valueOf((int) searchResponse.hits().total().value()));
         result.setTime((int) searchResponse.took());
-        result.suggest(suggestedQuery.get());
+        suggestedQuery.ifPresent(s -> result.suggest(s));
         result.setResults(hits
                 .stream()
                 .map(
@@ -80,7 +79,6 @@ public class SearchService {
         Map<String, List<String>> result = new HashMap<>();
 
         query = query.replaceAll("</*em>","");
-        System.out.println(query);
 
         Pattern matchQuotes = Pattern.compile("\\Q\"\\E(.*?)\\Q\"\\E",  Pattern.DOTALL);
         Matcher m = matchQuotes.matcher(query);

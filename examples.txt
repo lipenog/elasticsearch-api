@@ -1,0 +1,63 @@
+    "time": 8,
+    "hits": 10000,
+    "suggest": null,
+    "Results": [
+        {
+            "title": "Video super-resolution",
+            "url": "https://en.wikipedia.org/wiki/Video_super-resolution",
+            "abs": "VSR restores more <em>details</em> by using temporal information <em>Video</em> <em>Super</em> <em>Resolution</em> VSR is the process of generating high <em>resolution</em> <em>video</em> frames from the given low <em>resolution</em> ones ",
+            "search-terms": [
+                "resolution",
+                "details science really super ultra rabin video long wide math down each karp root big my"
+            ],
+            "not-found": [
+                "expression",
+                "algorithm",
+                "computer",
+                "results"
+            ]
+        },
+        {
+            "title": "Rabin–Karp algorithm",
+            "url": "https://en.wikipedia.org/wiki/Rabin–Karp_algorithm",
+            "abs": "In <em>computer</em> <em>science</em> the <em>Rabin</em> <em>Karp</em> <em>algorithm</em> or <em>Karp</em> <em>Rabin</em> <em>algorithm</em> is a string searching <em>algorithm</em> created by that uses hashing to find an exact match of a pattern string in a text ",
+            "search-terms": [
+                "computer",
+                "algorithm",
+                "details science really super ultra rabin video long wide math down each karp root big my"
+            ],
+            "not-found": [
+                "expression",
+                "resolution",
+                "results"
+            ]
+        }
+
+    "time": 4,
+    "hits": 3,
+    "suggest": "the <em>treat</em> and the \"randomized binary\" tree",
+    "Results": [
+        {
+            "title": "Random binary tree",
+            "url": "https://en.wikipedia.org/wiki/Random_binary_tree",
+            "abs": "<em>Random</em> <em>binary</em> <em>tree</em> In computer science and probability theory a <em>random</em> <em>binary</em> <em>tree</em> is a binary <em>tree</em> selected at random from some probability distribution on binary <em>trees</em> ",
+            "search-terms": [
+                "tree",
+                "randomized binary"
+            ],
+            "not-found": [
+                "treat"
+            ]
+        },
+        {
+            "title": "Treap",
+            "url": "https://en.wikipedia.org/wiki/Treap",
+            "abs": "In computer science the treap and the <em>randomized</em> <em>binary</em> search <em>tree</em> are two closely related forms of binary search <em>tree</em> data structures that maintain a dynamic set of ordered keys and allow binary searches among the keys ",
+            "search-terms": [
+                "tree",
+                "randomized binary"
+            ],
+            "not-found": [
+                "treat"
+            ]
+        }
