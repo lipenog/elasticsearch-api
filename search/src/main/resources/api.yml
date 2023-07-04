@@ -40,10 +40,16 @@ components:
     Result:
       type: object
       properties:
+
         time:
           type: integer
+
         hits:
           type: integer
+
+        suggest:
+          type: string
+
         Results:
           type: array
           items:

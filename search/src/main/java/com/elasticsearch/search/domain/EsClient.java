@@ -1,15 +1,19 @@
 package com.elasticsearch.search.domain;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.query_dsl.*;
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.MatchPhraseQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Highlight;
 import co.elastic.clients.elasticsearch.core.search.HighlightField;
 import co.elastic.clients.elasticsearch.core.search.HighlighterType;
+import co.elastic.clients.elasticsearch.core.search.Suggester;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
-import com.elasticsearch.search.bean.StopWordsSingleton;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import nl.altindag.ssl.SSLFactory;
 import org.apache.http.HttpHost;
@@ -22,21 +26,18 @@ import org.elasticsearch.client.RestClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.awt.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
+import static java.util.Objects.*;
 import static java.util.Objects.isNull;
 
 @Component
 public class EsClient {
-    private String username;
-    private String password;
+    private final String username;
+    private final String password;
     private ElasticsearchClient elasticsearchClient;
     private static final Integer PAGE_SIZE = 10;
     public EsClient(@Value("${elasticsearch.connection.username}") String username,
@@ -111,10 +112,10 @@ public class EsClient {
         } else {
             mustQueries = query.get("phrases").stream()
                     .map(s -> {
-                        Query matchPhraseQuery = MatchPhraseQuery.of(
+                        return MatchPhraseQuery.of(
                                 q -> q.field("content").query(s).queryName(s)
                         )._toQuery();
-                        return matchPhraseQuery;
+
                     }).collect(Collectors.toList());
         }
 
@@ -123,10 +124,9 @@ public class EsClient {
         } else {
             shouldQueries = query.get("words").stream()
                     .map(s -> {
-                        Query matchQuery = MatchQuery.of(
+                        return MatchQuery.of(
                                 q -> q.field("content").query(s).queryName(s)
                         )._toQuery();
-                        return matchQuery;
                     }).collect(Collectors.toList());
         }
 
@@ -134,5 +134,56 @@ public class EsClient {
                 q -> q.must(mustQueries).should(shouldQueries)
         )._toQuery();
         return boolQuery;
+    }
+
+    public Optional<String> querySuggest(String query){
+
+        Optional<String> result;
+
+        final String tmpQuery = query.replaceAll("\\Q-\\E", " ")
+                .replaceAll("\\Q\"\\E", " ")
+                .replaceAll("\\Q\'\\E", " ")
+                .replaceAll("\\Q,\\E", " ")
+                .replaceAll("\\Q.\\E", " ")
+                .replaceAll("\\s+", " ");
+
+        var suggester = Suggester.of(s -> s.suggesters("", su -> su.text(tmpQuery).term(t -> t.field("content.suggest").size(1))));
+        SearchResponse<ObjectNode> response;
+        try{
+            response = elasticsearchClient.search(s -> s.index("teste")
+                    .suggest(suggester), ObjectNode.class);
+
+            final int idx = 0;
+            List<String>suggestions = StreamSupport.stream(Spliterators.spliteratorUnknownSize(response.suggest().values().iterator(), Spliterator.ORDERED), false)
+                    .flatMap(sug -> sug.stream())
+                    .map(s -> {
+                        var suggestion = s.term().options();
+                        if(isNull(suggestion) || suggestion.isEmpty()) return "";
+                        return suggestion.get(0).text();
+                    }).collect(Collectors.toList());
+
+            var suggestedWords = suggestions.stream().distinct().filter(s -> !s.isEmpty()).collect(Collectors.toList());
+            if(suggestedWords.isEmpty()){
+                return Optional.empty();
+            }
+
+            Pattern matchSpaces = Pattern.compile(" ");
+            int i = 0;
+            StringBuilder sb = new StringBuilder();
+            for(String s : matchSpaces.split(tmpQuery)){
+                if(!suggestions.get(i).isEmpty()){
+                    sb.append("<em>").append(suggestions.get(i)).append("</em>").append(" ");
+                }else{
+                    sb.append(s).append(" ");
+                }
+                i++;
+            }
+            query = sb.toString().trim();
+
+        }catch (Exception e){
+            throw new RuntimeException(e);
+        }
+
+        return Optional.of(query);
     }
 }

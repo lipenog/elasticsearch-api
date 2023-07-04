@@ -9,10 +9,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.stereotype.Service;
 import com.elasticsearch.search.api.model.Result;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -38,6 +35,11 @@ public class SearchService {
             page = 1;
         }
 
+        Optional<String> suggestedQuery = esClient.querySuggest(query);
+        if(suggestedQuery.isPresent()){
+            query = suggestedQuery.get();
+        }
+
         Map<String, List<String>> treatedQuery = treatQuery(query);
         SearchResponse searchResponse = esClient.search(treatedQuery, page);
 
@@ -45,6 +47,8 @@ public class SearchService {
         Result result = new Result();
         result.setHits(Integer.valueOf((int) searchResponse.hits().total().value()));
         result.setTime((int) searchResponse.took());
+        suggestedQuery.ifPresent(s -> result.suggest(s));
+
         result.setResults(hits
                 .stream()
                 .map(
@@ -93,6 +97,8 @@ public class SearchService {
         tmpQuery = tmpQuery
                 .replaceAll("\\Q-\\E", " ")
                 .replaceAll("\\Q\'\\E", " ")
+                .replaceAll("\\Q,\\E", " ")
+                .replaceAll("\\Q.\\E", " ")
                 .replaceAll("\\s+", " ");
 
         Pattern matchSpaces = Pattern.compile(" ");
@@ -111,7 +117,6 @@ public class SearchService {
                 })
                 .collect(Collectors.toList());
 
-        System.out.println(words);
         // if the query contains only stop words
         if(words.isEmpty()){
             words = matchSpaces.splitAsStream(tmpQuery)
@@ -137,7 +142,6 @@ public class SearchService {
         List<String> wordsQuery = words.stream().limit(5).collect(Collectors.toList());
         wordsQuery.add(words.stream().skip(5).reduce((s1, s2) -> s1 + " " + s2).get());
 
-        System.out.println(wordsQuery);
 
         result.put("words", wordsQuery);
 
