@@ -45,9 +45,9 @@ public class SearchService {
 
         List<Hit<ObjectNode>> hits = searchResponse.hits().hits();
         Result result = new Result();
-        result.setHits(Integer.valueOf((int) searchResponse.hits().total().value()));
+        result.setHits((int) searchResponse.hits().total().value());
         result.setTime((int) searchResponse.took());
-        suggestedQuery.ifPresent(s -> result.suggest(s));
+        suggestedQuery.ifPresent(result::suggest);
         result.setResults(hits
                 .stream()
                 .map(
@@ -96,7 +96,7 @@ public class SearchService {
 
         tmpQuery = tmpQuery
                 .replaceAll("\\Q-\\E", " ")
-                .replaceAll("\\Q\'\\E", " ")
+                .replaceAll("\\Q'\\E", " ")
                 .replaceAll("\\Q,\\E", " ")
                 .replaceAll("\\Q.\\E", " ")
                 .replaceAll("\\s+", " ");
