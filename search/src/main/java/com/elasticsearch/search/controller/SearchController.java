@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import java.util.Date;
 import java.util.concurrent.CompletableFuture;
 @CrossOrigin
 @RestController
@@ -20,7 +20,7 @@ public class SearchController implements SearchApi {
     }
 
     @Override
-    public CompletableFuture<ResponseEntity<Result>> search(String query, Integer page) {
+    public CompletableFuture<ResponseEntity<Result>> search(String query, Integer page, Date startDate, Date endDate) {
         var result = searchService.submitQuery(query, page);
         return CompletableFuture
                 .supplyAsync(()-> ResponseEntity.ok(result));

@@ -80,6 +80,8 @@ public class EsClient {
 
         Map<String, HighlightField> map = new HashMap<>();
         map.put("content", HighlightField.of(hf -> hf.numberOfFragments(1).fragmentSize(300)));
+
+
         Highlight highlight = Highlight.of(
                 h -> h.type(HighlighterType.Unified)
                         .fields(map)
