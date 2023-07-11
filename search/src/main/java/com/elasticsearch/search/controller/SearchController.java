@@ -20,8 +20,8 @@ public class SearchController implements SearchApi {
     }
 
     @Override
-    public CompletableFuture<ResponseEntity<Result>> search(String query, Integer page, Date startDate, Date endDate) {
-        var result = searchService.submitQuery(query, page);
+    public CompletableFuture<ResponseEntity<Result>> search(String query, Integer page, String startDate, String endDate) {
+        var result = searchService.submitQuery(query, page, startDate, endDate);
         return CompletableFuture
                 .supplyAsync(()-> ResponseEntity.ok(result));
     }

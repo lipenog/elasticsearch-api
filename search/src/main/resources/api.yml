@@ -27,14 +27,12 @@ paths:
           description: filter the results by date
           schema:
             type: string
-            format: date
           example: "2003-06-11"
         - name: end-date
           in: query
           description: filter the results by date
           schema:
             type: string
-            format: date
           example: "2003-06-11"
       responses:
         200:

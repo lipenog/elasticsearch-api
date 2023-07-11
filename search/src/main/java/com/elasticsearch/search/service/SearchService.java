@@ -25,7 +25,7 @@ public class SearchService {
         stopWordsSingleton = StopWordsSingleton.getInstance();
     }
 
-    public Result submitQuery(String query, Integer page){
+    public Result submitQuery(String query, Integer page, String startDate, String endDate){
 
         if(isNull(query) || query.isBlank()){
             return new Result();
@@ -41,7 +41,8 @@ public class SearchService {
         }
 
         Map<String, List<String>> treatedQuery = treatQuery(query);
-        SearchResponse searchResponse = esClient.search(treatedQuery, page);
+
+        SearchResponse searchResponse = esClient.search(treatedQuery, page, startDate, endDate);
 
         List<Hit<ObjectNode>> hits = searchResponse.hits().hits();
         Result result = new Result();
@@ -91,10 +92,10 @@ public class SearchService {
         result.put("phrases", phrasesQuery);
 
         // remove the phrases in quotes
-        String tmpQuery = m.replaceAll(" ");
+        query = m.replaceAll(" ").trim().replaceAll("\\s+", " ");
 
-
-        tmpQuery = tmpQuery
+        //! ? ; _ :
+        String tmpQuery = query
                 .replaceAll("\\Q-\\E", " ")
                 .replaceAll("\\Q'\\E", " ")
                 .replaceAll("\\Q,\\E", " ")
@@ -108,43 +109,23 @@ public class SearchService {
                 .filter(s -> !s.isEmpty())
                 .filter(s -> !stopWordsSingleton.getStopWords().contains(s))
                 .distinct()
-                .sorted((s1, s2) -> {
-                    if(s1.length() > s2.length()){
-                        return -1;
-                    } else {
-                        return 1;
-                    }
-                })
+                .sorted((s1, s2) -> s2.length() - s1.length())
                 .collect(Collectors.toList());
 
-        // if the query contains only stop words
-        if(words.isEmpty()){
-            words = matchSpaces.splitAsStream(tmpQuery)
-                    .distinct()
-                    .filter(s -> !s.isEmpty())
-                    .sorted((s1, s2) -> {
-                        if(s1.length() > s2.length()){
-                            return -1;
-                        } else {
-                            return 1;
-                        }
-                    })
-                    .collect(Collectors.toList());
+        if(!words.isEmpty()){
+            if(words.stream().count() <= 5) {
+                result.put("words", words);
+            }else{
+                List<String> wordsQuery = words.stream().limit(5).collect(Collectors.toList());
+                wordsQuery.add(words.stream().skip(5).reduce((s1, s2) -> s1 + " " + s2).get());
+                result.put("words", wordsQuery);
+            }
         }
+
+        result.put("words", List.of(query));
+        return result;
 
         // the 5 largest words are considered the most important this way the client will send a bool query
         // that contains 5 should (the largest one's) and a last should that contains the rest of the query
-        if(words.stream().count() <= 5){
-            result.put("words", words);
-            return result;
-        }
-
-        List<String> wordsQuery = words.stream().limit(5).collect(Collectors.toList());
-        wordsQuery.add(words.stream().skip(5).reduce((s1, s2) -> s1 + " " + s2).get());
-
-
-        result.put("words", wordsQuery);
-
-        return result;
     }
 }
