@@ -2,7 +2,6 @@ package com.elasticsearch.search.domain;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Highlight;
 import co.elastic.clients.elasticsearch.core.search.HighlightField;
@@ -12,9 +11,7 @@ import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import jakarta.json.Json;
 import nl.altindag.ssl.SSLFactory;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -27,12 +24,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static java.util.Objects.*;
 import static java.util.Objects.isNull;
 
 @Component
@@ -56,24 +51,22 @@ public class EsClient {
     }
 
     private void setDateFilter(String startDate, String endDate) {
-        Query dateFilter = RangeQuery.of(d -> d.field("dtCreation").gte(JsonData.of(startDate)).lt(JsonData.of(endDate)))._toQuery();
-        queryBuilder = queryBuilder.filter(dateFilter);
+        Query startDateFilter = RangeQuery.of(d -> d.field("dt_creation").gte(JsonData.of(startDate)))._toQuery();
+        Query endDateFilter = RangeQuery.of(d -> d.field("dt_creation").lt(JsonData.of(endDate)))._toQuery();
+        queryBuilder = queryBuilder.filter(startDateFilter, endDateFilter);
     }
 
     private void setQuery(Map<String, List<String>> query) {
-        List<Query> mustQueries;
-        List<Query> shouldQueries;
+        List<Query> mustQueries = new ArrayList<>();
+        List<Query> shouldQueries = new ArrayList<>();
 
-        if (isNull(query.get("phrases"))) {
-            mustQueries = new ArrayList<>();
-        } else {
+        if (!isNull(query.get("phrases"))) {
             mustQueries = query.get("phrases").stream()
                     .map(s -> MatchPhraseQuery.of(q -> q.field("content").query(s).queryName(s))._toQuery())
                     .collect(Collectors.toList());
         }
-        if (isNull(query.get("words"))) {
-            shouldQueries = new ArrayList<>();
-        } else {
+
+        if (!isNull(query.get("words"))) {
             shouldQueries = query.get("words").stream()
                     .map(s -> MatchQuery.of(q -> q.field("content").query(s).queryName(s))._toQuery())
                     .collect(Collectors.toList());
@@ -118,12 +111,12 @@ public class EsClient {
 
 
             List<String> suggestions = StreamSupport.stream(Spliterators.spliteratorUnknownSize(response.suggest().values().iterator(), Spliterator.ORDERED), false)
-                    .flatMap(sug -> sug.stream())
+                    .flatMap(Collection::stream)
                     .map(s -> {
                         var suggestion = s.term().options();
                         if (isNull(suggestion) || suggestion.isEmpty()) return "";
                         return suggestion.get(0).text();
-                    }).collect(Collectors.toList());
+                    }).toList();
 
             boolean found = false;
             for (String s : suggestions) {
@@ -158,7 +151,7 @@ public class EsClient {
         this.queryBuilder = new BoolQuery.Builder();
         setQuery(query);
         if(!isNull(startDate) && !isNull(endDate)){
-            //setDateFilter(startDate, endDate);
+            setDateFilter(startDate, endDate);
         }
 
         Map<String, HighlightField> map = new HashMap<>();

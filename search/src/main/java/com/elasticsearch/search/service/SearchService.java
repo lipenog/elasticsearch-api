@@ -102,12 +102,11 @@ public class SearchService {
 
         Optional<String> suggestedQuery = esClient.querySuggest(tmpQuery);
         if(suggestedQuery.isPresent()){
-            tmpQuery = suggestedQuery.get();
-            result.put("suggest", List.of(tmpQuery));
+            result.put("suggest", List.of(suggestedQuery.get()));
+            tmpQuery = suggestedQuery.get().replaceAll("<em>|</em>", "");
         }
 
         Pattern matchSpaces = Pattern.compile(" ");
-
         // list all the other words except stop words sorted by the largest to the shortest
         List<String> words = matchSpaces.splitAsStream(tmpQuery)
                 .filter(s -> !s.isEmpty())
@@ -126,6 +125,7 @@ public class SearchService {
                 wordsQuery.add(words.stream().skip(5).reduce((s1, s2) -> s1 + " " + s2).get());
                 result.put("words", wordsQuery);
             }
+            return result;
         }
 
         result.put("words", List.of(query));
