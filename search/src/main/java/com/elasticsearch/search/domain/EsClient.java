@@ -14,6 +14,7 @@ import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.json.Json;
 import nl.altindag.ssl.SSLFactory;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -55,9 +56,8 @@ public class EsClient {
     }
 
     private void setDateFilter(String startDate, String endDate) {
-        Query startDateFilter = RangeQuery.of(d -> d.field("dtCreation").gte(JsonData.of(startDate)))._toQuery();
-        Query endDateFilter = RangeQuery.of(d -> d.field("dtCreation").lt(JsonData.of(endDate)))._toQuery();
-        queryBuilder = queryBuilder.filter(startDateFilter).filter(endDateFilter);
+        Query dateFilter = RangeQuery.of(d -> d.field("dtCreation").gte(JsonData.of(startDate)).lt(JsonData.of(endDate)))._toQuery();
+        queryBuilder = queryBuilder.filter(dateFilter);
     }
 
     private void setQuery(Map<String, List<String>> query) {
@@ -68,23 +68,15 @@ public class EsClient {
             mustQueries = new ArrayList<>();
         } else {
             mustQueries = query.get("phrases").stream()
-                    .map(s -> {
-                        return MatchPhraseQuery.of(
-                                q -> q.field("content").query(s).queryName(s)
-                        )._toQuery();
-
-                    }).collect(Collectors.toList());
+                    .map(s -> MatchPhraseQuery.of(q -> q.field("content").query(s).queryName(s))._toQuery())
+                    .collect(Collectors.toList());
         }
-
         if (isNull(query.get("words"))) {
             shouldQueries = new ArrayList<>();
         } else {
             shouldQueries = query.get("words").stream()
-                    .map(s -> {
-                        return MatchQuery.of(
-                                q -> q.field("content").query(s).queryName(s)
-                        )._toQuery();
-                    }).collect(Collectors.toList());
+                    .map(s -> MatchQuery.of(q -> q.field("content").query(s).queryName(s))._toQuery())
+                    .collect(Collectors.toList());
         }
 
         queryBuilder = queryBuilder.must(mustQueries).should(shouldQueries);
@@ -107,11 +99,11 @@ public class EsClient {
                         .setSSLHostnameVerifier(sslFactory.getHostnameVerifier())
                 ).build();
 
-
         ElasticsearchTransport elasticsearchTransport = new RestClientTransport(
                 restClient,
                 new JacksonJsonpMapper()
         );
+
 
         elasticsearchClient = new ElasticsearchClient(elasticsearchTransport);
     }
@@ -123,6 +115,7 @@ public class EsClient {
         try {
             response = elasticsearchClient.search(s -> s.index("wikipedia")
                     .suggest(suggester), ObjectNode.class);
+
 
             List<String> suggestions = StreamSupport.stream(Spliterators.spliteratorUnknownSize(response.suggest().values().iterator(), Spliterator.ORDERED), false)
                     .flatMap(sug -> sug.stream())
@@ -147,13 +140,7 @@ public class EsClient {
             StringBuilder sb = new StringBuilder();
             for (String s : matchSpaces.split(query)) {
                 if (!suggestions.get(i).isEmpty()) {
-                    if (s.startsWith("\"")) {
-                        sb.append("\"");
-                    }
                     sb.append("<em>").append(suggestions.get(i)).append("</em>");
-                    if (s.endsWith("\"")) {
-                        sb.append("\"");
-                    }
                 } else {
                     sb.append(s);
                 }

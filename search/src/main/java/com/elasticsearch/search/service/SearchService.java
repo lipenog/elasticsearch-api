@@ -35,11 +35,6 @@ public class SearchService {
             page = 1;
         }
 
-        Optional<String> suggestedQuery = esClient.querySuggest(query);
-        if(suggestedQuery.isPresent()){
-            query = suggestedQuery.get();
-        }
-
         Map<String, List<String>> treatedQuery = treatQuery(query);
 
         SearchResponse searchResponse = esClient.search(treatedQuery, page, startDate, endDate);
@@ -48,7 +43,10 @@ public class SearchService {
         Result result = new Result();
         result.setHits((int) searchResponse.hits().total().value());
         result.setTime((int) searchResponse.took());
-        suggestedQuery.ifPresent(result::suggest);
+        var suggestedQuery = treatedQuery.get("suggest");
+        if(!isNull(suggestedQuery)){
+            result.suggest(suggestedQuery.get(0));
+        }
         result.setResults(hits
                 .stream()
                 .map(
@@ -102,6 +100,12 @@ public class SearchService {
                 .replaceAll("\\Q.\\E", " ")
                 .replaceAll("\\s+", " ");
 
+        Optional<String> suggestedQuery = esClient.querySuggest(tmpQuery);
+        if(suggestedQuery.isPresent()){
+            tmpQuery = suggestedQuery.get();
+            result.put("suggest", List.of(tmpQuery));
+        }
+
         Pattern matchSpaces = Pattern.compile(" ");
 
         // list all the other words except stop words sorted by the largest to the shortest
@@ -112,6 +116,8 @@ public class SearchService {
                 .sorted((s1, s2) -> s2.length() - s1.length())
                 .collect(Collectors.toList());
 
+        // the 5 largest words are considered the most important this way the client will send a bool query
+        // that contains 5 should (the largest one's) and a last should that contains the rest of the query
         if(!words.isEmpty()){
             if(words.stream().count() <= 5) {
                 result.put("words", words);
@@ -124,8 +130,5 @@ public class SearchService {
 
         result.put("words", List.of(query));
         return result;
-
-        // the 5 largest words are considered the most important this way the client will send a bool query
-        // that contains 5 should (the largest one's) and a last should that contains the rest of the query
     }
 }
