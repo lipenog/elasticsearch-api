@@ -25,22 +25,6 @@ public class SearchService {
     }
 
     public Result submitQuery(String query, Integer page, Filter filter, FilterBetween filterBetween, Sort sort){
-
-        if(!isNull(filter)){
-            System.out.println("Filter => value: " + filter.getValue());
-            System.out.println("Filter => field: " + filter.getField().getValue());
-            System.out.println("Filter => mode: " + filter.getMode().getValue());
-        }
-        if(!isNull(filterBetween)){
-            System.out.println("Filter => start value: " + filterBetween.getStartValue());
-            System.out.println("Filter => end value: " + filterBetween.getEndValue());
-            System.out.println("Filter => field: " + filterBetween.getField().getValue());
-        }
-        if(!isNull(sort)){
-            System.out.println("Sort => field: " + sort.getField().getValue());
-            System.out.println("Sort => field: " + sort.getMode().getValue());
-        }
-
         if(isNull(query) || query.isBlank()){
             return new Result();
         }
@@ -68,8 +52,16 @@ public class SearchService {
                         h -> {
                             List<String> words = treatedQuery.get("words");
                             List<String> notFound = words.stream().limit(5).filter(s -> !h.matchedQueries().contains(s)).collect(Collectors.toList());
+
+                            String absContent;
+                            if(isNull(h.highlight().get("content"))){
+                                absContent = h.source().get("content").asText();
+                            } else {
+                                absContent = h.highlight().get("content").get(0);
+                            }
+
                             return new ResultResults()
-                                    .abs(treatContent(h.highlight().get("content").get(0)))
+                                    .abs(treatContent(absContent))
                                     .title(h.source().get("title").asText())
                                     .url(h.source().get("url").asText())
                                     .readingTime(h.source().get("reading_time").asInt(0))
@@ -125,6 +117,8 @@ public class SearchService {
             result.put("suggest", List.of(suggested));
             tmpQuery = suggestedQuery.get().replaceAll("<em>|</em>", "");
         }
+        
+        tmpQuery = tmpQuery.replaceAll("!\\{tag:quotes}", "");
 
         Pattern matchSpaces = Pattern.compile(" ");
         // list all the other words except stop words sorted by the largest to the shortest
@@ -134,7 +128,7 @@ public class SearchService {
                 .distinct()
                 .sorted((s1, s2) -> s2.length() - s1.length())
                 .collect(Collectors.toList());
-
+        System.out.println(words);
         // the 5 largest words are considered the most important this way the client will send a bool query
         // that contains 5 should (the largest one's) and a last should that contains the rest of the query
         if(!words.isEmpty()){
@@ -148,7 +142,7 @@ public class SearchService {
             return result;
         }
 
-        result.put("words", List.of(query));
+        result.put("words", List.of(tmpQuery));
         return result;
     }
 }
