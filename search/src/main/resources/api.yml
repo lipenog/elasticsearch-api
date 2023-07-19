@@ -22,18 +22,12 @@ paths:
           description: Page number
           schema:
             type: integer
-        - name: start-date
-          in: query
-          description: filter the results by date
-          schema:
-            type: string
-          example: "2003-06-11"
-        - name: end-date
-          in: query
-          description: filter the results by date
-          schema:
-            type: string
-          example: "2003-06-11"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Search-Options'
+
       responses:
         200:
           description: OK
@@ -73,6 +67,10 @@ components:
                 type: string
               abs:
                 type: string
+              dt-creation:
+                type: string
+              reading-time:
+                type: integer
               search-terms:
                 type: array
                 items:
@@ -89,3 +87,58 @@ components:
         message:
           description: A human readable error message
           type: string
+
+    Sort:
+      type: object
+      required:
+        - field
+        - mode
+      properties:
+        field:
+          type: string
+          enum: [dt_creation, reading_time]
+        mode:
+          type: string
+          enum: [asc, desc]
+
+    Filter:
+      type: object
+      required:
+        - mode
+        - field
+        - value
+      properties:
+        field:
+          type: string
+          enum: [dt_creation, reading_time]
+        value:
+          type: string
+        mode:
+          type: string
+          enum: [gt, lt]
+
+    Filter-Between:
+      type: object
+      required:
+        - field
+        - start-value
+        - end-value
+      properties:
+        field:
+          type: string
+          enum: [dt_creation, reading_time]
+        start-value:
+          type: string
+        end-value:
+          type: string
+
+    Search-Options:
+      type: object
+      properties:
+        filter:
+          $ref: '#/components/schemas/Filter'
+        sort:
+          $ref: '#/components/schemas/Sort'
+        filterBetween:
+          $ref: '#/components/schemas/Filter-Between'
+      additionalProperties: false

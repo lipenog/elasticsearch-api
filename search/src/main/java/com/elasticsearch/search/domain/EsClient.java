@@ -1,7 +1,11 @@
 package com.elasticsearch.search.domain;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.FieldSort;
+import co.elastic.clients.elasticsearch._types.SortOptions;
+import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Highlight;
 import co.elastic.clients.elasticsearch.core.search.HighlightField;
@@ -11,6 +15,9 @@ import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import com.elasticsearch.search.api.model.Filter;
+import com.elasticsearch.search.api.model.FilterBetween;
+import com.elasticsearch.search.api.model.Sort;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import nl.altindag.ssl.SSLFactory;
 import org.apache.http.HttpHost;
@@ -35,6 +42,7 @@ public class EsClient {
     private final String username;
     private final String password;
     private BoolQuery.Builder queryBuilder;
+    private SearchRequest.Builder searchBuilder;
     private ElasticsearchClient elasticsearchClient;
     private static final Integer PAGE_SIZE = 10;
 
@@ -44,16 +52,6 @@ public class EsClient {
         this.username = username;
         this.password = password;
         createConnection();
-    }
-
-    public void setReadingTimeFilter() {
-
-    }
-
-    private void setDateFilter(String startDate, String endDate) {
-        Query startDateFilter = RangeQuery.of(d -> d.field("dt_creation").gte(JsonData.of(startDate)))._toQuery();
-        Query endDateFilter = RangeQuery.of(d -> d.field("dt_creation").lt(JsonData.of(endDate)))._toQuery();
-        queryBuilder = queryBuilder.filter(startDateFilter, endDateFilter);
     }
 
     private void setQuery(Map<String, List<String>> query) {
@@ -73,6 +71,50 @@ public class EsClient {
         }
 
         queryBuilder = queryBuilder.must(mustQueries).should(shouldQueries);
+    }
+
+
+    private void setFilter(Filter filter){
+        Query queryFilter;
+
+        String field = filter.getField().getValue();
+        String value = filter.getValue();
+
+        if(filter.getMode().getValue().equals("gt")){
+            queryFilter = RangeQuery.of(d -> d.field(field).gte(JsonData.of(value)))._toQuery();
+        } else {
+            queryFilter = RangeQuery.of(d -> d.field(field).lte(JsonData.of(value)))._toQuery();
+        }
+
+        queryBuilder = queryBuilder.filter(queryFilter);
+    }
+
+    private void setSort(Sort sort){
+        SortOptions sortResult;
+
+        String field = sort.getField().getValue();
+        String mode = sort.getMode().getValue();
+        SortOrder sortOrder;
+
+
+        if(mode.equals("asc")){
+            sortOrder = SortOrder.Asc;
+        } else {
+            sortOrder = SortOrder.Desc;
+        }
+        sortResult = SortOptions.of(s -> s.field(FieldSort.of(f -> f.field(field).order(sortOrder))));
+        searchBuilder = searchBuilder.sort(sortResult);
+    }
+
+    private void setFilterBetween(FilterBetween filterBetween){
+        String field = filterBetween.getField().getValue();
+        String startValue = filterBetween.getStartValue();
+        String endValue = filterBetween.getEndValue();
+
+        Query start = RangeQuery.of(s -> s.field(field).gte(JsonData.of(startValue)))._toQuery();
+        Query end = RangeQuery.of(s -> s.field(field).lte(JsonData.of(endValue)))._toQuery();
+
+        queryBuilder = queryBuilder.filter(start, end);
     }
 
     private void createConnection() {
@@ -147,11 +189,19 @@ public class EsClient {
         }
     }
 
-    public SearchResponse search(Map<String, List<String>> query, Integer page, String startDate, String endDate) {
+    public SearchResponse search(Map<String, List<String>> query, Integer page, Filter filter, FilterBetween filterBetween, Sort sort) {
         this.queryBuilder = new BoolQuery.Builder();
+        this.searchBuilder = new SearchRequest.Builder();
+
         setQuery(query);
-        if(!isNull(startDate) && !isNull(endDate)){
-            setDateFilter(startDate, endDate);
+        if(!isNull(filter)){
+            setFilter(filter);
+        }
+        if(!isNull(filterBetween)){
+            setFilterBetween(filterBetween);
+        }
+        if(!isNull(sort)){
+            setSort(sort);
         }
 
         Map<String, HighlightField> map = new HashMap<>();
@@ -168,17 +218,17 @@ public class EsClient {
 
         int firstElement = (page - 1) * PAGE_SIZE;
 
+        searchBuilder = searchBuilder.index("wikipedia")
+                .from(firstElement)
+                .size(PAGE_SIZE)
+                .query(queryBuilder.build()._toQuery());
+                //.highlight(highlight);
+
         try {
-            response = elasticsearchClient.search(s -> s.index("wikipedia")
-                    .from(firstElement)
-                    .size(PAGE_SIZE)
-                    .query(queryBuilder.build()._toQuery())
-                    .highlight(highlight), ObjectNode.class);
+            response = elasticsearchClient.search(searchBuilder.highlight(highlight).build(), ObjectNode.class);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
-        //queryBuilder = new BoolQuery.Builder();
 
         return response;
     }

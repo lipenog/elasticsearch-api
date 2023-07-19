@@ -2,12 +2,11 @@ package com.elasticsearch.search.service;
 
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
-import com.elasticsearch.search.api.model.ResultResults;
+import com.elasticsearch.search.api.model.*;
 import com.elasticsearch.search.bean.StopWordsSingleton;
 import com.elasticsearch.search.domain.EsClient;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.stereotype.Service;
-import com.elasticsearch.search.api.model.Result;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -25,7 +24,22 @@ public class SearchService {
         stopWordsSingleton = StopWordsSingleton.getInstance();
     }
 
-    public Result submitQuery(String query, Integer page, String startDate, String endDate){
+    public Result submitQuery(String query, Integer page, Filter filter, FilterBetween filterBetween, Sort sort){
+
+        if(!isNull(filter)){
+            System.out.println("Filter => value: " + filter.getValue());
+            System.out.println("Filter => field: " + filter.getField().getValue());
+            System.out.println("Filter => mode: " + filter.getMode().getValue());
+        }
+        if(!isNull(filterBetween)){
+            System.out.println("Filter => start value: " + filterBetween.getStartValue());
+            System.out.println("Filter => end value: " + filterBetween.getEndValue());
+            System.out.println("Filter => field: " + filterBetween.getField().getValue());
+        }
+        if(!isNull(sort)){
+            System.out.println("Sort => field: " + sort.getField().getValue());
+            System.out.println("Sort => field: " + sort.getMode().getValue());
+        }
 
         if(isNull(query) || query.isBlank()){
             return new Result();
@@ -37,7 +51,7 @@ public class SearchService {
 
         Map<String, List<String>> treatedQuery = treatQuery(query);
 
-        SearchResponse searchResponse = esClient.search(treatedQuery, page, startDate, endDate);
+        SearchResponse searchResponse = esClient.search(treatedQuery, page, filter, filterBetween, sort);
 
         List<Hit<ObjectNode>> hits = searchResponse.hits().hits();
         Result result = new Result();
@@ -47,17 +61,19 @@ public class SearchService {
         if(!isNull(suggestedQuery)){
             result.suggest(suggestedQuery.get(0));
         }
+
         result.setResults(hits
                 .stream()
                 .map(
                         h -> {
                             List<String> words = treatedQuery.get("words");
                             List<String> notFound = words.stream().limit(5).filter(s -> !h.matchedQueries().contains(s)).collect(Collectors.toList());
-
                             return new ResultResults()
                                     .abs(treatContent(h.highlight().get("content").get(0)))
                                     .title(h.source().get("title").asText())
                                     .url(h.source().get("url").asText())
+                                    .readingTime(h.source().get("reading_time").asInt(0))
+                                    .dtCreation(h.source().get("dt_creation").asText())
                                     .searchTerms(h.matchedQueries())
                                     .notFound(notFound);
                         }
@@ -90,7 +106,7 @@ public class SearchService {
         result.put("phrases", phrasesQuery);
 
         // remove the phrases in quotes
-        query = m.replaceAll(" ").trim().replaceAll("\\s+", " ");
+        query = m.replaceAll("!{tag:quotes}").trim();
 
         //! ? ; _ :
         String tmpQuery = query
@@ -102,7 +118,11 @@ public class SearchService {
 
         Optional<String> suggestedQuery = esClient.querySuggest(tmpQuery);
         if(suggestedQuery.isPresent()){
-            result.put("suggest", List.of(suggestedQuery.get()));
+            String suggested = suggestedQuery.get();
+            for(String s : phrasesQuery){
+                suggested = suggested.replaceFirst("!\\{tag:quotes}", "\""+s+"\"");
+            }
+            result.put("suggest", List.of(suggested));
             tmpQuery = suggestedQuery.get().replaceAll("<em>|</em>", "");
         }
 
