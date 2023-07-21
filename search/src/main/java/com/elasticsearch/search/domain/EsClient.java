@@ -14,22 +14,28 @@ import co.elastic.clients.elasticsearch.core.search.Suggester;
 import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
+import co.elastic.clients.transport.TransportUtils;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.elasticsearch.search.api.model.Filter;
 import com.elasticsearch.search.api.model.FilterBetween;
 import com.elasticsearch.search.api.model.Sort;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import nl.altindag.ssl.SSLFactory;
+import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
+import org.apache.http.message.BasicHeader;
 import org.elasticsearch.client.RestClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import javax.net.ssl.SSLContext;
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -121,17 +127,10 @@ public class EsClient {
         CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(username, password));
 
-        SSLFactory sslFactory = SSLFactory.builder()
-                .withUnsafeTrustMaterial()
-                .withUnsafeHostnameVerifier()
-                .build();
-
         RestClient restClient = RestClient.builder(
-                        new HttpHost("localhost", 9200, "https"))
+                        new HttpHost("24fe5cabb271453591fa31a498adf0e2.es.southamerica-east1.gcp.elastic-cloud.com", 9243, "https"))
                 .setHttpClientConfigCallback((HttpAsyncClientBuilder httpClientBuilder) -> httpClientBuilder
                         .setDefaultCredentialsProvider(credentialsProvider)
-                        .setSSLContext(sslFactory.getSslContext())
-                        .setSSLHostnameVerifier(sslFactory.getHostnameVerifier())
                 ).build();
 
         ElasticsearchTransport elasticsearchTransport = new RestClientTransport(
