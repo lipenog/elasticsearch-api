@@ -22,11 +22,39 @@ paths:
           description: Page number
           schema:
             type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Search-Options'
+        - name: filter-type
+          in: query
+          schema:
+            type: string
+            enum: [filter, filterB]
+        - name: filter-mode
+          in: query
+          schema:
+            type: string
+            enum: [gt, lt]
+        - name: filter-field
+          in: query
+          schema:
+            type: string
+            enum: [dt_creation, reading_time]
+        - name: filter-value
+          in: query
+          schema:
+            type: string
+        - name: filter-adt-value
+          in: query
+          schema:
+            type: string
+        - name: sort-field
+          in: query
+          schema:
+            type: string
+            enum: [ dt_creation, reading_time ]
+        - name: sort-mode
+          in: query
+          schema:
+            type: string
+            enum: [ asc, desc ]
 
       responses:
         200:

@@ -19,14 +19,37 @@ public class SearchController implements SearchApi {
         this.searchService = searchService;
     }
 
+
     @Override
-    public CompletableFuture<ResponseEntity<Result>> search(String query, Integer page, SearchOptions searchOptions) {
-        Result result;
-        if(isNull(searchOptions)){
-            result = searchService.submitQuery(query, page, null, null, null);
-        } else {
-            result = searchService.submitQuery(query, page, searchOptions.getFilter(), searchOptions.getFilterBetween(), searchOptions.getSort());
+    public CompletableFuture<ResponseEntity<Result>> search(String query, Integer page, String filterType, String filterMode, String filterField, String filterValue, String filterAdtValue, String sortField, String sortMode) {
+        Filter filter = null;
+        FilterBetween filterBetween = null;
+        Sort sort = null;
+
+        if(!isNull(sortField) & !isNull(sortMode)){
+            sort = new Sort();
+            sort.setMode(Sort.ModeEnum.fromValue(sortMode));
+            sort.setField(Sort.FieldEnum.fromValue(sortField));
         }
+
+        if(!isNull(filterType)){
+
+            if(filterType.equals("filter") & !isNull(filterMode) & !isNull(filterField) & !isNull(filterValue)){
+                filter = new Filter();
+                filter.setValue(filterValue);
+                filter.setField(Filter.FieldEnum.fromValue(filterField));
+                filter.setMode(Filter.ModeEnum.fromValue(filterMode));
+            }
+
+            if(filterType.equals("filterB") & !isNull(filterField) & !isNull(filterValue) & !isNull(filterAdtValue)){
+                filterBetween = new FilterBetween();
+                filterBetween.setStartValue(filterValue);
+                filterBetween.setEndValue(filterAdtValue);
+                filterBetween.setField(FilterBetween.FieldEnum.fromValue(filterField));
+            }
+        }
+
+        Result result = searchService.submitQuery(query, page, filter, filterBetween, sort);
 
         return CompletableFuture
                 .supplyAsync(()-> ResponseEntity.ok(result));
