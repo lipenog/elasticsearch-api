@@ -128,7 +128,7 @@ public class SearchService {
                 .distinct()
                 .sorted((s1, s2) -> s2.length() - s1.length())
                 .collect(Collectors.toList());
-        
+
         // the 5 largest words are considered the most important this way the client will send a bool query
         // that contains 5 should (the largest one's) and a last should that contains the rest of the query
         if(!words.isEmpty()){
